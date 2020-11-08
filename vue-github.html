@@ -1,0 +1,137 @@
+<!--
+Vue.js GitHub commits API to vanilla JS
+-->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vue GitHub to vanilla JS Demo</title>
+
+    <style>
+      body {
+        margin: 0 auto;
+        max-width: 40em;
+        width: 88%;
+      }
+      #demo {
+        font-family: 'Helvetica', Arial, sans-serif;
+      }
+      a {
+        text-decoration: none;
+        color: #f66;
+      }
+      li {
+        line-height: 1.5em;
+        margin-bottom: 20px;
+      }
+      .author,
+      .date {
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="demo">
+      <h1>Latest Vue.js Commits</h1>
+
+      <input type="radio" id="master" name="branch" value="master" checked /> <label for="master">master</label>
+      <input type="radio" id="dev" name="branch" value="dev" /> <label for="dev">dev</label>
+
+      <div id="app"></div>
+    </div>
+
+    <script>
+      // Variables
+      var apiURL = 'https://api.github.com/repos/vuejs/vue/commits?per_page=3&sha=';
+      var currentBranch = document.querySelector('[name="branch"][checked]').value;
+      var app = document.querySelector('#app');
+
+      /**
+       * Sanitize and encode all HTML in a user-submitted string
+       * https://portswigger.net/web-security/cross-site-scripting/preventing
+       * @param  {String} str  The user-submitted string
+       * @return {String} str  The sanitized string
+       */
+      var sanitize = function (str) {
+        return str.replace(/[^\w. ]/gi, function (c) {
+          return '&#' + c.charCodeAt(0) + ';';
+        });
+      };
+
+      // Truncate a string
+      var truncate = function (v) {
+        var newline = v.indexOf('\n');
+        return newline > 0 ? v.slice(0, newline) : v;
+      };
+
+      // Format timestamp into readable date
+      var formatDate = function (v) {
+        return v.replace(/T|Z/g, ' ');
+      };
+
+      // Render data into the UI
+      var render = function (data) {
+        app.innerHTML = `
+          <p>vuejs/vue@${currentBranch}</p>
+          <ul>
+            ${data
+              .map(function (record) {
+                var html = `
+                  <li>
+                    <a class="commit" target="_blank" href="${sanitize(record.html_url)}">
+                      ${sanitize(record.sha.slice(0, 7))}
+                    </a>
+                    - <span class="message">${sanitize(truncate(record.commit.message))}</span><br />
+                    by
+                    <span class="author">
+                      <a target="_blank" href="${sanitize(record.author.html_url)}">
+                        ${sanitize(record.commit.author.name)}
+                      </a>
+                    </span>
+                    at
+                    <span class="date">${sanitize(formatDate(record.commit.author.date))}</span>
+                  </li>
+                `;
+                return html;
+              })
+              .join('')}
+          </ul>
+        `;
+      };
+
+      // Fetch data from the Github API
+      var fetchData = function () {
+        fetch(apiURL + currentBranch)
+          .then(function (response) {
+            if (response.ok) {
+              return response.json();
+            }
+            throw new Error(response);
+          })
+          .then(function (data) {
+            render(data);
+          })
+          .catch(function (error) {
+            console.warn(error);
+          });
+      };
+
+      // Handle input changes
+      var inputHandler = function (event) {
+        // Only run on [name="branch"] inputs
+        if (event.target.name !== 'branch') return;
+
+        // Set the current branch
+        currentBranch = event.target.value;
+
+        // Fetch new data
+        fetchData();
+      };
+
+      // Inits & Event Listeners
+      fetchData();
+      document.addEventListener('input', inputHandler);
+    </script>
+  </body>
+</html>
